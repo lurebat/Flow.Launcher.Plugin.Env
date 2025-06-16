@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Flow.Launcher.Plugin;
 
 namespace Flow.Launcher.Plugin.Env
 {
-    public class Env : IAsyncPlugin
+    public class Env : IPlugin
     {
         private PluginInitContext _context;
 
-        public async Task<List<Result>> QueryAsync(Query query, CancellationToken token)
+        private const string IconPath = "icon.png";
+        private const string ClipboardErrorMsg = "Failed to copy to clipboard.";
+        private const string SetVarErrorMsg = "Failed to set variable: ";
+        private const string DeleteVarErrorMsg = "Failed to delete variable: ";
+
+        public List<Result> Query(Query query)
         {
             var results = new List<Result>();
             var first = query.FirstSearch?.ToLowerInvariant() ?? "";
@@ -44,35 +47,29 @@ namespace Flow.Launcher.Plugin.Env
 
                 if (!string.IsNullOrWhiteSpace(query.SecondSearch))
                 {
-                    results.Add(
-                        new Result
+                    results.Add(CreateResult(
+                        $"Set '{key}' to '{query.SecondSearch}'",
+                        value,
+                        () =>
                         {
-                            Title = $"Set '{key}' to '{query.SecondSearch}'",
-                            SubTitle = value,
-                            Action = _ =>
+                            try
                             {
-                                try
-                                {
-                                    Environment.SetEnvironmentVariable(key, query.SecondSearch, EnvironmentVariableTarget.User);
-                                }
-                                catch
-                                {
-                                    _context.API.ShowMsg("Failed to copy to clipboard.");
-                                }
-
-                                return true;
-                            },
-                            IcoPath = "icon.png"
+                                Environment.SetEnvironmentVariable(key, query.SecondSearch, EnvironmentVariableTarget.User);
+                            }
+                            catch
+                            {
+                                _context.API.ShowMsg(ClipboardErrorMsg);
+                            }
+                            return true;
                         }
-                    );
+                    ));
                 }
                 else
                 {
-                    results.Add(new Result
-                    {
-                        Title = key,
-                        SubTitle = value,
-                        Action = _ =>
+                    results.Add(CreateResult(
+                        key,
+                        value,
+                        () =>
                         {
                             try
                             {
@@ -80,16 +77,27 @@ namespace Flow.Launcher.Plugin.Env
                             }
                             catch
                             {
-                                _context.API.ShowMsg("Failed to copy to clipboard.");
+                                _context.API.ShowMsg(ClipboardErrorMsg);
                             }
                             return true;
-                        },
-                        IcoPath = "icon.png"
-                    });
+                        }
+                    ));
                 }
             }
 
             return results;
+        }
+
+        private Result CreateResult(string title, string subTitle, Func<bool> action = null, object contextData = null)
+        {
+            return new Result
+            {
+                Title = title,
+                SubTitle = subTitle,
+                Action = action != null ? _ => action() : (Func<ActionContext, bool>)null,
+                IcoPath = IconPath,
+                ContextData = contextData
+            };
         }
 
         private List<Result> HandleAddCommand(Query query)
@@ -99,11 +107,10 @@ namespace Flow.Launcher.Plugin.Env
             var value = query.ThirdSearch.Trim();
             if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
             {
-                results.Add(new Result
-                {
-                    Title = $"Add or update environment variable '{key}'",
-                    SubTitle = $"Set value to '{value}' (User scope)",
-                    Action = _ =>
+                results.Add(CreateResult(
+                    $"Add or update environment variable '{key}'",
+                    $"Set value to '{value}' (User scope)",
+                    () =>
                     {
                         try
                         {
@@ -111,21 +118,18 @@ namespace Flow.Launcher.Plugin.Env
                         }
                         catch (Exception ex)
                         {
-                            _context.API.ShowMsg($"Failed to set variable: {ex.Message}");
+                            _context.API.ShowMsg(SetVarErrorMsg + ex.Message);
                         }
                         return true;
-                    },
-                    IcoPath = "icon.png"
-                });
+                    }
+                ));
             }
             else
             {
-                results.Add(new Result
-                {
-                    Title = "Usage: add KEY VALUE",
-                    SubTitle = "Example: add MY_VAR hello",
-                    IcoPath = "icon.png"
-                });
+                results.Add(CreateResult(
+                    "Usage: add KEY VALUE",
+                    "Example: add MY_VAR hello"
+                ));
             }
             return results;
         }
@@ -136,11 +140,10 @@ namespace Flow.Launcher.Plugin.Env
             var key = query.SecondToEndSearch.Trim();
             if (!string.IsNullOrEmpty(key))
             {
-                results.Add(new Result
-                {
-                    Title = $"Delete environment variable '{key}'",
-                    SubTitle = "Removes the variable from User scope",
-                    Action = _ =>
+                results.Add(CreateResult(
+                    $"Delete environment variable '{key}'",
+                    "Removes the variable from User scope",
+                    () =>
                     {
                         try
                         {
@@ -148,30 +151,26 @@ namespace Flow.Launcher.Plugin.Env
                         }
                         catch (Exception ex)
                         {
-                            _context.API.ShowMsg($"Failed to delete variable: {ex.Message}");
+                            _context.API.ShowMsg(DeleteVarErrorMsg + ex.Message);
                         }
                         return true;
                     },
-                    IcoPath = "icon.png",
-                    ContextData = key
-                });
+                    key
+                ));
             }
             else
             {
-                results.Add(new Result
-                {
-                    Title = "Usage: delete KEY",
-                    SubTitle = "Example: delete MY_VAR",
-                    IcoPath = "icon.png"
-                });
+                results.Add(CreateResult(
+                    "Usage: delete KEY",
+                    "Example: delete MY_VAR"
+                ));
             }
             return results;
         }
 
-        public Task InitAsync(PluginInitContext context)
+        public void Init(PluginInitContext context)
         {
             _context = context;
-            return Task.CompletedTask;
         }
     }
 }
