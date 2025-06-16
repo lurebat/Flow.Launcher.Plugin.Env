@@ -24,5 +24,12 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+    - name: Publish
+      run: dotnet publish -c Release -o publish_output
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: publish_output
     - name: Test
       run: dotnet test --no-build --verbosity normal
