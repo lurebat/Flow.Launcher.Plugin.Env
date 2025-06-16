@@ -1,0 +1,12 @@
+{
+    "ID": "0F43C966617C4817B1BEC29DCC8E5A69",
+    "ActionKeyword": "env",
+    "Name": "Env",
+    "Description": "a new plugin for Flow",
+    "Author": "lurebat",
+    "Version": "1.0.0",
+    "Language": "csharp",
+    "Website": "https://github.com/lurebat/Flow.Launcher.Plugin.Env",
+    "IcoPath": "icon.png",
+    "ExecuteFileName": "Flow.Launcher.Plugin.Env.dll"
+}
