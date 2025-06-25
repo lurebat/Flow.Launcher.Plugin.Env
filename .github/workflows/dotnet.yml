@@ -6,8 +6,8 @@ name: .NET
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    tags:
+      - 'v*.*.*'  # Matches version tags like v1.0.0
 
 jobs:
   build:
@@ -15,36 +15,36 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.nuget/packages
-        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-        restore-keys: |
-          nuget-${{ runner.os }}-
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Publish
-      run: dotnet publish -c Release -o publish_output
-    - name: Zip plugin output
-      run: |
-        Compress-Archive -Path publish_output/* -DestinationPath Flow.Launcher.Plugin.Env.zip
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Flow.Launcher.Plugin.Env.zip
-        path: Flow.Launcher.Plugin.Env.zip
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      if: github.ref_type == 'tag'
-      with:
-        files: Flow.Launcher.Plugin.Env.zip
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Publish
+        run: dotnet publish -c Release -o publish_output
+      - name: Zip plugin output
+        run: |
+          Compress-Archive -Path publish_output/* -DestinationPath Flow.Launcher.Plugin.Env.zip
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flow.Launcher.Plugin.Env.zip
+          path: Flow.Launcher.Plugin.Env.zip
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: Flow.Launcher.Plugin.Env.zip
