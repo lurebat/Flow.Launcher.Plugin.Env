@@ -9,6 +9,9 @@ on:
     tags:
       - 'v*.*.*'  # Matches version tags like v1.0.0
 
+permissions:
+  contents: write  # Required for uploading artifacts and releases
+
 jobs:
   build:
 
