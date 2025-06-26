@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Linq;
 
 namespace Flow.Launcher.Plugin.Env
 {
@@ -25,6 +24,8 @@ namespace Flow.Launcher.Plugin.Env
                     return HandleAddCommand(query);
                 case "delete":
                     return HandleDeleteCommand(query);
+                case "path":
+                    return HandlePathCommand(query);
             }
 
             // Get all environment variables
@@ -40,7 +41,7 @@ namespace Flow.Launcher.Plugin.Env
                 
                 var value = entry.Value?.ToString();
 
-                if (!_context.API.FuzzySearch(first, key).Success && !_context.API.FuzzySearch(first, value).Success)
+                if (!string.IsNullOrEmpty(first) && !_context.API.FuzzySearch(first, key).Success && !_context.API.FuzzySearch(first, value).Success)
                 {
                     continue;
                 }
@@ -165,6 +166,121 @@ namespace Flow.Launcher.Plugin.Env
                     "Example: delete MY_VAR"
                 ));
             }
+            return results;
+        }
+
+        // Add this new method for handling PATH subcommands
+        private List<Result> HandlePathCommand(Query query)
+        {
+            var results = new List<Result>();
+            var pathValue = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User) ?? string.Empty;
+            var pathEntries = pathValue.Split(System.IO.Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+            var command = query.SecondSearch.ToLowerInvariant();
+            var third = query.ThirdSearch.ToLowerInvariant();
+            
+            switch (command)
+            {
+                case "delete" or "del":
+                {
+                    if (string.IsNullOrWhiteSpace(third))
+                    {
+                        results.Add(CreateResult("Usage: path delete <path>", "Example: path delete C:\\MyFolder"));
+                        return results;
+                    }
+                    
+                    // Delete matching path entry
+                    foreach (var entry in pathEntries)
+                    {
+                        if (_context.API.FuzzySearch(third, entry).Success)
+                        {
+                            results.Add(CreateResult(
+                                $"Delete PATH entry: {entry}",
+                                entry,
+                                () =>
+                                {
+                                    try
+                                    {
+                                        var newPath = string.Join(System.IO.Path.PathSeparator,
+                                            pathEntries.Where(e => !e.Equals(entry, StringComparison.OrdinalIgnoreCase)));
+                                        Environment.SetEnvironmentVariable("PATH", newPath, EnvironmentVariableTarget.User);
+                                    }
+                                    catch
+                                    {
+                                        _context.API.ShowMsg(DeleteVarErrorMsg + entry);
+                                    }
+                                    return true;
+                                }
+                            ));
+                        }
+                    }
+                    if (results.Count == 0)
+                    {
+                        results.Add(CreateResult($"No PATH entry found matching '{third}'", null));
+                    }
+
+                    break;
+                }
+                case "add":
+                    if (string.IsNullOrWhiteSpace(third))
+                    {
+                        results.Add(CreateResult("Usage: path add <path>", "Example: path add C:\\MyFolder"));
+                        return results;
+                    }
+                    
+                    // Append new path entry
+                    results.Add(CreateResult(
+                        $"Append '{third}' to PATH",
+                        null,
+                        () =>
+                        {
+                            try
+                            {
+                                var newPath = pathValue.TrimEnd(System.IO.Path.PathSeparator) + System.IO.Path.PathSeparator + third;
+                                Environment.SetEnvironmentVariable("PATH", newPath, EnvironmentVariableTarget.User);
+                            }
+                            catch
+                            {
+                                _context.API.ShowMsg(SetVarErrorMsg + "PATH");
+                            }
+                            return true;
+                        }
+                    ));
+
+                    break;
+                default:
+                {
+                    // List all PATH entries
+                    foreach (var entry in pathEntries)
+                    {
+                        if (string.IsNullOrWhiteSpace(command) || _context.API.FuzzySearch(command, entry).Success)
+                        {
+                            results.Add(CreateResult(
+                                entry,
+                                "Copy to clipboard",
+                                () =>
+                                {
+                                    try
+                                    {
+                                        _context.API.CopyToClipboard(entry);
+                                    }
+                                    catch
+                                    {
+                                        _context.API.ShowMsg(ClipboardErrorMsg);
+                                    }
+                                    return true;
+                                }
+                            ));
+                        }
+                    }
+                    if (results.Count == 0)
+                    {
+                        results.Add(CreateResult($"No PATH entries found.", null));
+                    }
+
+                    break;
+                }
+            }
+
             return results;
         }
 
