@@ -14,12 +14,14 @@ A Flow Launcher plugin to manage Windows user environment variables directly fro
 ## Usage
 Type `env` in Flow Launcher to activate the plugin, then use the following commands:
 
-- `list` — Show all user environment variables
+- no arguments — List all user environment variables
+- `KEY` - List the value of a specific variable, and copy it to the clipboard (e.g., `MY_VAR`)
 - `add KEY VALUE` — Add or update a variable (e.g., `add MY_VAR hello`)
 - `del/delete KEY` — Delete a variable (e.g., `delete MY_VAR`)
-- `path <something>` — List all PATH entries, each as a separate result, with a filter.
-- `path add <something>` — Append `<something>` to the PATH variable.
-- `path del/delete <something>` — Delete a PATH entry matching `<something>` (fuzzy search)
+- `path` — List all PATH entries, each as a separate result, with a filter.
+- `path KEY` — List PATH entries matching `KEY`, each as a separate result, copying the entry to the clipboard.
+- `path add KEY` — Append `KEY` to the PATH variable.
+- `path del/delete KEY` — Delete a PATH entry matching `KEY` (fuzzy search)
 
 ## License
 MIT License
