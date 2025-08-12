@@ -48,7 +48,7 @@ namespace Flow.Launcher.Plugin.Env
                         return CreateResult(
                             $"Add new variable {first}='{query.SecondSearch}'",
                             $"Set value to '{query.SecondSearch}' (User scope)",
-                            () =>
+                            _ =>
                             {
                                 try
                                 {
@@ -69,7 +69,7 @@ namespace Flow.Launcher.Plugin.Env
                         return CreateResult(
                             $"Set '{r.key}' to '{query.SecondSearch}'",
                             r.value,
-                            () =>
+                            _ =>
                             {
                                 try
                                 {
@@ -88,7 +88,7 @@ namespace Flow.Launcher.Plugin.Env
                     return CreateResult(
                         r.key,
                         $"Copy to clipboard: '{r.value}'",
-                        () =>
+                        _ =>
                         {
                             try
                             {
@@ -149,15 +149,15 @@ namespace Flow.Launcher.Plugin.Env
         }
 
 
-        private Result CreateResult(string title, string? subTitle, Func<bool>? action = null, object? contextData = null)
+        private Result CreateResult(string title, string? subTitle, Func<ActionContext, bool>? action = null, object? contextData = null)
         {
             return new Result
             {
                 Title = title,
                 SubTitle = subTitle ?? "",
-                Action = action != null ? _ => action() : null,
+                Action = action,
                 IcoPath = IconPath,
-                ContextData = contextData
+                ContextData = contextData,
             };
         }
 
@@ -167,7 +167,7 @@ namespace Flow.Launcher.Plugin.Env
             var handleDeleteCommand = FuzzySearch(envVars, query.SecondToEndSearch.Trim()).Where(r => !r.extraExactMatch).Select(r => CreateResult(
                     $"Delete variable {r.key}",
                     r.value,
-                    () =>
+                    _ =>
                     {
                         try
                         {
@@ -221,7 +221,7 @@ namespace Flow.Launcher.Plugin.Env
                         return CreateResult(
                             $"Delete: {r.key}",
                             r.value,
-                            () =>
+                            _ =>
                             {
                                 try
                                 {
@@ -241,7 +241,7 @@ namespace Flow.Launcher.Plugin.Env
                 "add" => [CreateResult(
                         $"Append '{search}' to PATH",
                         null,
-                        () =>
+                        _ =>
                         {
                             try
                             {
@@ -260,9 +260,22 @@ namespace Flow.Launcher.Plugin.Env
                     {
                         return CreateResult(
                             r.key,
-                            $"{search} Copy to clipboard",
-                            () =>
+                            $"{search} Copy to clipboard. Ctrl+Click to open in Explorer",
+                            context =>
                             {
+                                if (context.SpecialKeyState.CtrlPressed)
+                                {
+                                    try
+                                    {
+                                        _context.API.OpenDirectory(r.key);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _context.API.ShowMsg($"Failed to open path: {ex.Message}");
+                                    }
+                                    return true;
+                                }
+                                
                                 try
                                 {
                                     _context.API.CopyToClipboard(r.key);

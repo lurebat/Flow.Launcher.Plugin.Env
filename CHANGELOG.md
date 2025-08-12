@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2025-08-12
+### Added
+- Added `ctrl+click` to open paths in file explorer.
+
 ## [1.2.0] - 2025-08-12
 ### Changed
 - Removed the `add` command. You can now add or update a variable by simply entering `KEY VALUE`.
