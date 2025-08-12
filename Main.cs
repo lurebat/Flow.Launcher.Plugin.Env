@@ -20,8 +20,6 @@ namespace Flow.Launcher.Plugin.Env
 
             switch (first)
             {
-                case "add":
-                    return HandleAddCommand(query);
                 case "delete":
                     return HandleDeleteCommand(query);
                 case "path":
@@ -30,7 +28,9 @@ namespace Flow.Launcher.Plugin.Env
 
             // Get all environment variables
             var envVars = Environment.GetEnvironmentVariables(EnvironmentVariableTarget.User);
+            var envKeys = new HashSet<string>(envVars.Keys.Cast<string>(), StringComparer.OrdinalIgnoreCase);
 
+            bool foundMatch = false;
             foreach (System.Collections.DictionaryEntry entry in envVars)
             {
                 var key = entry.Key.ToString();
@@ -46,6 +46,7 @@ namespace Flow.Launcher.Plugin.Env
                     continue;
                 }
 
+                foundMatch = true;
                 if (!string.IsNullOrWhiteSpace(query.SecondSearch))
                 {
                     results.Add(CreateResult(
@@ -86,6 +87,32 @@ namespace Flow.Launcher.Plugin.Env
                 }
             }
 
+            // If no match found and user provided both key and value, offer to add new variable
+            if (!foundMatch && !string.IsNullOrWhiteSpace(query.FirstSearch) && !string.IsNullOrWhiteSpace(query.SecondSearch))
+            {
+                var newKey = query.FirstSearch.Trim();
+                var newValue = query.SecondSearch.Trim();
+                if (!envKeys.Contains(newKey))
+                {
+                    results.Add(CreateResult(
+                        $"Add new environment variable '{newKey}'",
+                        $"Set value to '{newValue}' (User scope)",
+                        () =>
+                        {
+                            try
+                            {
+                                Environment.SetEnvironmentVariable(newKey, newValue, EnvironmentVariableTarget.User);
+                            }
+                            catch (Exception ex)
+                            {
+                                _context.API.ShowMsg(SetVarErrorMsg + ex.Message);
+                            }
+                            return true;
+                        }
+                    ));
+                }
+            }
+
             return results;
         }
 
@@ -101,39 +128,6 @@ namespace Flow.Launcher.Plugin.Env
             };
         }
 
-        private List<Result> HandleAddCommand(Query query)
-        {
-            var results = new List<Result>();
-            var key = query.SecondSearch.Trim();
-            var value = query.ThirdSearch.Trim();
-            if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
-            {
-                results.Add(CreateResult(
-                    $"Add or update environment variable '{key}'",
-                    $"Set value to '{value}' (User scope)",
-                    () =>
-                    {
-                        try
-                        {
-                            Environment.SetEnvironmentVariable(key, value, EnvironmentVariableTarget.User);
-                        }
-                        catch (Exception ex)
-                        {
-                            _context.API.ShowMsg(SetVarErrorMsg + ex.Message);
-                        }
-                        return true;
-                    }
-                ));
-            }
-            else
-            {
-                results.Add(CreateResult(
-                    "Usage: add KEY VALUE",
-                    "Example: add MY_VAR hello"
-                ));
-            }
-            return results;
-        }
 
         private List<Result> HandleDeleteCommand(Query query)
         {
